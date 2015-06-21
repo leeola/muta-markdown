@@ -5,58 +5,49 @@ import (
 	"testing"
 
 	"github.com/leeola/muta"
+	"github.com/leeola/muta/mutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestMarkdownStreamerNext(t *testing.T) {
-	Convey("Should immediately return nil fi", t, func() {
-		s := &MarkdownStreamer{Streamer: &muta.MockStreamer{}}
-		fi, r, err := s.Next()
+	Convey("Should not attempt to modify nil fi", t, func() {
+		s := &MarkdownStreamer{}
+		fi, rc, err := s.Next(nil, nil)
 		So(fi, ShouldBeNil)
-		So(r, ShouldBeNil)
+		So(rc, ShouldBeNil)
 		So(err, ShouldBeNil)
-	})
-
-	Convey("Should not create markdown on error", t, func() {
-		s := &MarkdownStreamer{Streamer: &muta.MockStreamer{
-			Files:    []string{"error.md"},
-			Contents: []string{"error: **foo**"},
-		}}
-		_, r, err := s.Next()
-		So(err, ShouldNotBeNil)
-		b, err := ioutil.ReadAll(r)
-		So(string(b), ShouldEqual, "error: **foo**")
 	})
 
 	Convey("Should not modify non-markdown files", t, func() {
-		s := &MarkdownStreamer{Streamer: &muta.MockStreamer{
-			Files:    []string{"file"},
-			Contents: []string{"This **isn't** a markdown file!"},
-		}}
-		_, r, err := s.Next()
+		s := &MarkdownStreamer{}
+		_, rc, err := s.Next(
+			muta.NewFileInfo("file.txt"),
+			mutil.StringCloser("This **isn't** a markdown file!"),
+		)
 		So(err, ShouldBeNil)
-		b, err := ioutil.ReadAll(r)
+		b, err := ioutil.ReadAll(rc)
 		So(string(b), ShouldEqual, "This **isn't** a markdown file!")
 	})
 
 	Convey("Should compile markdown files to html", t, func() {
-		s := &MarkdownStreamer{Streamer: &muta.MockStreamer{
-			Files:    []string{"file.md"},
-			Contents: []string{"This **is** a markdown file!"},
-		}}
-		_, r, err := s.Next()
+		s := &MarkdownStreamer{}
+		_, rc, err := s.Next(
+			muta.NewFileInfo("file.md"),
+			mutil.StringCloser("This **is** a markdown file!"),
+		)
 		So(err, ShouldBeNil)
-		b, err := ioutil.ReadAll(r)
+		b, err := ioutil.ReadAll(rc)
 		So(string(b), ShouldEqual,
 			"<p>This <strong>is</strong> a markdown file!</p>\n")
 	})
 
 	Convey("Should rename markdown files to html", t, func() {
-		s := &MarkdownStreamer{Streamer: &muta.MockStreamer{
-			Files: []string{"file.md"},
-		}}
-		fi, _, err := s.Next()
+		s := &MarkdownStreamer{}
+		fi, _, err := s.Next(
+			muta.NewFileInfo("file.md"),
+			mutil.StringCloser("foo"),
+		)
 		So(err, ShouldBeNil)
-		So(fi.Name, ShouldEqual, "file.html")
+		So(fi.Name(), ShouldEqual, "file.html")
 	})
 }
